@@ -11,9 +11,9 @@ from metaflow import (
     environment,
     IncludeFile,
     huggingface_hub,
-    checkpoint
+    checkpoint,
+    kubernetes
 )
-from metaflow.cards import Table, Markdown
 
 # NOTE: We will shortly release this as part of the default Outerbounds Metaflow distribution.
 from launcher import TorchTune
@@ -30,14 +30,15 @@ coreweave_k8s_config = dict(
     use_tmpfs=True,
 )
 
-def huggingface(func):
+def model_cache_environment(func):
     deco_list = [
-        # pypi(
-        #     python="3.11.10",
-        #     packages={
-        #         "huggingface-hub[hf_transfer]": "0.25.2"
-        #     },  # Installing Hugging Face Hub with transfer feature
-        # ),
+        pypi(
+            python="3.11.10",
+            packages={
+                "huggingface-hub[hf_transfer]": "0.25.2",
+                "omegaconf": "2.4.0.dev3",
+            },  # Installing Hugging Face Hub with transfer feature
+        ),
         huggingface_hub(temp_dir_root="metaflow-chkpt/hf_hub"),
         environment(
             vars={
@@ -152,8 +153,8 @@ class DPOPostTrainDemo(FlowSpec):
     def start(self):
         self.next(self.pull_model)
 
-    @huggingface
-    # @kubernetes(**coreweave_k8s_config)
+    @model_cache_environment
+    @kubernetes(**coreweave_k8s_config)
     @step
     def pull_model(self):
         '''
@@ -190,8 +191,8 @@ class DPOPostTrainDemo(FlowSpec):
         load=[("base_model", "metaflow-chkpt/model")], 
         temp_dir_root="metaflow-chkpt/loaded_models"
     )
-    # @training_environment
-    # @kubernetes(**coreweave_k8s_config)
+    @training_environment
+    @kubernetes(**coreweave_k8s_config)
     @step
     def train(self):
         import yaml
@@ -238,8 +239,8 @@ class DPOPostTrainDemo(FlowSpec):
         load=[("dpo_model_ref", "metaflow-chkpt/dpo_model")], 
         temp_dir_root="metaflow-chkpt/loaded_models"
     )
-    # @inference_environment
-    # @kubernetes(**coreweave_k8s_config)
+    @inference_environment
+    @kubernetes(**coreweave_k8s_config)
     @step
     def eval(self):
         from dpo_eval import run_eval

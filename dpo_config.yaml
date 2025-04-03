@@ -8,14 +8,19 @@
 # To launch on 8 devices, run the following command from root:
 #   tune run --nnodes 1 --nproc_per_node 8 full_dpo_distributed.py --config dpo_config.yaml
 
-base_dir: /tmp/Llama-3.3-70B-Instruct
-output_dir: /tmp/torchtune/llama3_3_70B/full_dpo # /tmp may be deleted by your system. Change it to your preference.
+# model_size: "70B"
+# model_version: "3.3"
+model_size: "3B"
+model_version: "3.2"
+base_model_name: Llama-${model_version}-${model_size}-Instruct
 
-# Model Arguments
+base_dir: /tmp/${base_model_name}
+output_dir: /tmp/torchtune/${base_model_name}/full_dpo # /tmp may be deleted by your system. Change it to your preference.
+
 model:
-  _component_: torchtune.models.llama3_3.llama3_3_70b
+  _component_: torchtune.models.llama3_2.llama3_2_3b
+  # _component_: torchtune.models.llama3_3.llama3_3_70b # TODO: Change if using a different model
 
-# Tokenizer
 tokenizer:
   _component_: torchtune.models.llama3.llama3_tokenizer
   path: ${base_dir}/original/tokenizer.model
@@ -26,7 +31,8 @@ checkpointer:
   checkpoint_dir: ${base_dir}
   checkpoint_files:
     filename_format: model-{}-of-{}.safetensors
-    max_filename: "00030"
+    # max_filename: "00030"
+    max_filename: "00002"
   recipe_checkpoint: null
   output_dir: ${output_dir}
   model_type: LLAMA3
@@ -38,7 +44,8 @@ ref_checkpointer:
   checkpoint_dir: ${base_dir}
   checkpoint_files:
     filename_format: model-{}-of-{}.safetensors
-    max_filename: "00030"
+    # max_filename: "00030"
+    max_filename: "00002"
   recipe_checkpoint: null
   output_dir: ${output_dir}
   model_type: LLAMA3
@@ -52,7 +59,7 @@ shuffle: True
 batch_size: 1
 
 huggingface:
-  repo_id: meta-llama/Llama-3.3-70B-Instruct
+  repo_id: meta-llama/${base_model_name}
   allow_patterns:
     - "*.safetensors"
     - "*.json"

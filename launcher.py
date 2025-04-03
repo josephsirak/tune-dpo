@@ -4,6 +4,7 @@ from typing import Optional, List, Dict
 import subprocess
 import shutil
 from metaflow import current
+import sys
 
 
 class TorchTune:

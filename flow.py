@@ -30,6 +30,7 @@ coreweave_k8s_config = dict(
     use_tmpfs=True,
 )
 
+
 def model_cache_environment(func):
     deco_list = [
         pypi(
@@ -61,7 +62,8 @@ def training_environment(func):
                 "kagglehub": "0.3.6",
                 "datasets": "3.2.0",
                 "transformers": "4.48.3",
-                "torchtune @ git+https://github.com/pytorch/torchtune": "@8e9645c68d2e889e13607a569a419360d61760d5",
+                "torchtune": "0.6.0",
+                "vllm": "0.7.2",
                 "torch": "2.5.1",
                 "torchvision": "0.20.1",
                 "torchao": "0.8.0",
@@ -96,7 +98,7 @@ def inference_environment(func):
                 "datasets": "3.2.0",
                 "vllm": "0.7.2",
                 "transformers": "4.48.3",
-                "torchtune @ git+https://github.com/pytorch/torchtune": "@8e9645c68d2e889e13607a569a419360d61760d5",
+                "torchtune": "0.6.0",
                 "torch": "2.5.1",
                 "torchvision": "0.20.1",
                 "torchao": "0.8.0",
@@ -239,7 +241,8 @@ class DPOPostTrainDemo(FlowSpec):
         load=[("dpo_model_ref", "metaflow-chkpt/dpo_model")], 
         temp_dir_root="metaflow-chkpt/loaded_models"
     )
-    @inference_environment
+    # @inference_environment
+    @training_environment
     @kubernetes(**coreweave_k8s_config)
     @step
     def eval(self):

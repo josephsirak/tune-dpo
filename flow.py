@@ -12,7 +12,8 @@ from metaflow import (
     IncludeFile,
     huggingface_hub,
     checkpoint,
-    kubernetes
+    kubernetes,
+    secrets
 )
 
 # NOTE: We will shortly release this as part of the default Outerbounds Metaflow distribution.
@@ -46,6 +47,7 @@ def model_cache_environment(func):
                 "HF_HUB_ENABLE_HF_TRANSFER": "1",  # Enable Hugging Face transfer acceleration
             }
         ),
+        secrets(sources=["outerbounds.eddie-hf"]) # TODO: fill your secret
     ]
     for deco in deco_list:
         func = deco(func)
@@ -63,7 +65,6 @@ def training_environment(func):
                 "datasets": "3.2.0",
                 "transformers": "4.48.3",
                 "torchtune": "0.6.0",
-                "vllm": "0.7.2",
                 "torch": "2.5.1",
                 "torchvision": "0.20.1",
                 "torchao": "0.8.0",
@@ -102,6 +103,7 @@ def inference_environment(func):
                 "torch": "2.5.1",
                 "torchvision": "0.20.1",
                 "torchao": "0.8.0",
+                "setuptools": ""
             },
         ),
         environment(
@@ -241,8 +243,7 @@ class DPOPostTrainDemo(FlowSpec):
         load=[("dpo_model_ref", "metaflow-chkpt/dpo_model")], 
         temp_dir_root="metaflow-chkpt/loaded_models"
     )
-    # @inference_environment
-    @training_environment
+    @inference_environment
     @kubernetes(**coreweave_k8s_config)
     @step
     def eval(self):
@@ -253,6 +254,7 @@ class DPOPostTrainDemo(FlowSpec):
             # data_split=self.test_split,
             output_dir="results",
             max_batches=10,
+            world_size=8,
             seed=42
         )
         self.next(self.end)

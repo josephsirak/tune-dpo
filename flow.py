@@ -35,7 +35,7 @@ if N_GPU==8: # tested on H100 80GB
 
 elif N_GPU==4: # tested on a10g, AWS g5.12xlarge
     coreweave_k8s_config = dict(
-        compute_pool="a10g4x",
+        compute_pool="coreweave-h100",
         cpu=42,
         memory=164 * 1000,
         gpu=N_GPU,

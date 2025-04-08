@@ -19,46 +19,28 @@ from metaflow import (
 # NOTE: We will shortly release this as part of the default Outerbounds Metaflow distribution.
 from launcher import TorchTune
 
-N_GPU = 4
-
-if N_GPU==8: # tested on H100 80GB
-    coreweave_k8s_config = dict(
-        compute_pool="coreweave-h100",
-        cpu=100,
-        memory=900 * 1000,
-        gpu=N_GPU,
-        shared_memory=200 * 1000,
-        image="registry.hub.docker.com/valayob/nebius-nccl-pytorch:0.0.2",
-        # This thing needs a security context of `V1Container` with privilage=true to use Infiniband.
-        disk=1000 * 1000,
-        use_tmpfs=True,
-    )
-
-elif N_GPU==4: # tested on a10g, AWS g5.12xlarge
-    coreweave_k8s_config = dict(
-        compute_pool="a10g4x",
-        cpu=42,
-        memory=164 * 1000,
-        gpu=N_GPU,
-        shared_memory=128 * 1000,
-        # This thing needs a security context of `V1Container` with privilage=true to use Infiniband.
-        disk=400 * 1000,
-        use_tmpfs=True,
-    )
-
-else:
-    raise ValueError('N_GPU must equal 8 or 4.')
+coreweave_k8s_config = dict(
+    compute_pool="coreweave-h100",
+    cpu=100,
+    memory=900 * 1000,
+    gpu=8,
+    shared_memory=200 * 1000,
+    image="registry.hub.docker.com/valayob/nebius-nccl-pytorch:0.0.2",
+    # This thing needs a security context of `V1Container` with privilage=true to use Infiniband.
+    disk=1000 * 1000,
+    use_tmpfs=True,
+)
 
 
 def model_cache_environment(func):
     deco_list = [
-        # pypi(
-        #     python="3.11.10",
-        #     packages={
-        #         "huggingface-hub[hf_transfer]": "0.25.2",
-        #         "omegaconf": "2.4.0.dev3",
-        #     },  # Installing Hugging Face Hub with transfer feature
-        # ),
+        pypi(
+            python="3.11.10",
+            packages={
+                "huggingface-hub[hf_transfer]": "0.25.2",
+                "omegaconf": "2.4.0.dev3",
+            },  # Installing Hugging Face Hub with transfer feature
+        ),
         huggingface_hub(temp_dir_root="metaflow-chkpt/hf_hub"),
         environment(
             vars={
@@ -75,20 +57,20 @@ def training_environment(func):
     deco_list = [
         card(),
         gpu_profile(interval=10),
-        # pypi(
-        #     python="3.11.10",
-        #     packages={
-        #         # "wandb": "0.19.5",
-        #         "kagglehub": "0.3.6",
-        #         "datasets": "3.2.0",
-        #         "transformers": "4.48.3",
-        #         "torchtune": "0.6.0",
-        #         "torch": "2.5.1",
-        #         "torchvision": "0.20.1",
-        #         "torchao": "0.8.0",
-        #         "setuptools": ""
-        #     },
-        # ),
+        pypi(
+            python="3.11.10",
+            packages={
+                # "wandb": "0.19.5",
+                "kagglehub": "0.3.6",
+                "datasets": "3.2.0",
+                "transformers": "4.48.3",
+                "torchtune": "0.6.0",
+                "torch": "2.5.1",
+                "torchvision": "0.20.1",
+                "torchao": "0.8.0",
+                "setuptools": ""
+            },
+        ),
         environment(
             vars={
                 "WANDB_PROJECT": "dpo",
@@ -110,20 +92,20 @@ def inference_environment(func):
     deco_list = [
         card(),
         gpu_profile(interval=10),
-        # pypi(
-        #     python="3.11.10",
-        #     packages={
-        #         "kagglehub": "0.3.6",
-        #         "datasets": "3.2.0",
-        #         "vllm": "0.7.2",
-        #         "transformers": "4.48.3",
-        #         "torchtune": "0.6.0",
-        #         "torch": "2.5.1",
-        #         "torchvision": "0.20.1",
-        #         "torchao": "0.8.0",
-        #         "setuptools": ""
-        #     },
-        # ),
+        pypi(
+            python="3.11.10",
+            packages={
+                "kagglehub": "0.3.6",
+                "datasets": "3.2.0",
+                "vllm": "0.7.2",
+                "transformers": "4.48.3",
+                "torchtune": "0.6.0",
+                "torch": "2.5.1",
+                "torchvision": "0.20.1",
+                "torchao": "0.8.0",
+                "setuptools": ""
+            },
+        ),
         environment(
             vars={
                 "WANDB_PROJECT": "dpo",
@@ -176,7 +158,7 @@ class DPOPostTrainDemo(FlowSpec):
         self.next(self.pull_model)
 
     @model_cache_environment
-    @kubernetes(**coreweave_k8s_config, image='docker.io/eddieob/hf-model-cache')
+    @kubernetes(**coreweave_k8s_config)
     @step
     def pull_model(self):
         '''
@@ -214,7 +196,7 @@ class DPOPostTrainDemo(FlowSpec):
         temp_dir_root="metaflow-chkpt/loaded_models"
     )
     @training_environment
-    @kubernetes(**coreweave_k8s_config, image="docker.io/eddieob/torchtune-train")
+    @kubernetes(**coreweave_k8s_config)
     @step
     def train(self):
         import yaml
@@ -243,7 +225,7 @@ class DPOPostTrainDemo(FlowSpec):
             config_dict=config,
             additional_cli_options=[
                 "--nproc-per-node", 
-                str(N_GPU)
+                "8"
             ],
         )
 
@@ -262,7 +244,7 @@ class DPOPostTrainDemo(FlowSpec):
         temp_dir_root="metaflow-chkpt/loaded_models"
     )
     @inference_environment
-    @kubernetes(**coreweave_k8s_config, image="docker.io/eddieob/torchtune-vllm-inference")
+    @kubernetes(**coreweave_k8s_config)
     @step
     def eval(self):
         from dpo_eval import run_eval
@@ -272,7 +254,7 @@ class DPOPostTrainDemo(FlowSpec):
             # data_split=self.test_split,
             output_dir="results",
             max_batches=10,
-            world_size=N_GPU,
+            world_size=8,
             seed=42
         )
         self.next(self.end)

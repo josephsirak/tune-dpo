@@ -4,7 +4,6 @@ from metaflow import (
     step,
     current,
     Parameter,
-    pypi,
     card,
     gpu_profile,
     model,
